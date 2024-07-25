@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from scipy.integrate import odeint
 
 # Read the excel file
-df = pd.read_excel(r'C:\Users\chaiyon0\OneDrive\DATA\PythonFit\ExcitonDiffusionFit\Timetrace_SubPc-2.xlsx', sheet_name='Sheet1')
+df = pd.read_excel(r'C:\Users\chaiy\OneDrive\DATA\PythonFit\ExcitonDiffusionFit\Timetrace_SubPc-1.xlsx', sheet_name='Sheet1')
 # Select the required columns and rename them
 df = df.iloc[:, :5]  # Select the first 5 columns
 t = df.iloc[0:, 0]  # Time column
@@ -39,21 +39,30 @@ def rate_eq(n_t, t, k, Y0):
 
 # Solve the differential equation
 def N_t(t, N0, k, Y):
- return odeint (rate_eq, N0, t, args=(k, Y))
+ return (odeint (rate_eq, N0, t, args=(k, Y)))/N0
+
+# Test the function
+# N_t_test = N_t(Time_values, 1, 0.01, 0.01)
+# print (f"N_t_test={N_t_test}")
 
 
 
 # Define the residuals function
-def residuals(params, X_data, y_data):
+def residuals(params, X_data, Y_data):
  k, Y = params[:2]
  N0 = params[2:]
- residuals = np.zeros(y_data.shape[0])
- for i in range (4):
-  start = i * Time_values.shape[0]
-  end = start + Time_values.shape[0]
-  residuals[start:end] = y_data[start:end] - N_t (Time_values, N0[i], k, Y,)
+ residuals = []
+ for i in range(4):
+  start = i * len(X_data) // 4
+  end = (i + 1) * len(X_data) // 4
+  X_data_i = X_data[start:end]
+  Y_data_i = Y_data[start:end]
+  predicted = N_t(X_data_i, N0[i], k, Y).flatten()
+  residuals_i = Y_data_i - predicted
+  residuals.append(residuals_i)
+ return np.concatenate(residuals)
 
- return residuals
+
 
 # Initial guess for the parameters k, Y, N0
 initial_guess = (0.01, 0.01, 1, 1, 1, 1)
