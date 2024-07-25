@@ -7,7 +7,7 @@ from scipy.special import erf
 import matplotlib.pyplot as plt
 
 # Read the excel file
-df = pd.read_excel(r'Timetrace.xlsx', sheet_name='Sheet1')
+df = pd.read_excel(r'C:\Users\chaiyon0\OneDrive\DATA\PythonFit\ExcitonDiffusionFit\Timetrace_SubPc-2.xlsx', sheet_name='Sheet1')
 # Select the required columns and rename them
 df = df.iloc[:, :5]  # Select the first 5 columns
 t = df.iloc[0:, 0]  # Time column
@@ -35,7 +35,7 @@ Y_data_1D = np.concatenate(Y_data)
 
 # Define the function for N(t) when exciton annihilation is time-independent
 def N_t(t, N0, k, Y):
- return N0 * np.exp(-k * t) / (1 +  Y * N0 * (1 - np.exp(-k * t))/ (2 * k) )
+ return np.exp(-k * t) / (1 +  Y * N0 * (1 - np.exp(-k * t))/ (2 * k) )
 
 # Define the residuals function
 def residuals(params, X_data, y_data):
@@ -51,12 +51,12 @@ def residuals(params, X_data, y_data):
 
 # Initial guess for the parameters k, Y, N0
 initial_guess = (0.01, 0.01, 1, 1, 1, 1)
-# Define the lower and upper bounds for a, EF, Tc
-#lower_bounds = np.concatenate(([-np.inf, -np.inf], np.full(Tc.flatten().shape, 250)))
-#upper_bounds = np.concatenate(([np.inf, np.inf], np.full(Tc.flatten().shape, 1500)))
+# Define the lower and upper bounds
+lower_bounds = (0, 0, 0, 0, 0, 0)
+upper_bounds = (1, 1, 10, 10, 10, 10)
 
 # Perform the least-squares minimization
-result = least_squares(residuals, initial_guess, args=(X_data_1D, Y_data_1D), xtol=3e-16, ftol=3e-16, max_nfev=40000)
+result = least_squares(residuals, initial_guess, args=(X_data_1D, Y_data_1D), bounds=(lower_bounds, upper_bounds),xtol=3e-16, ftol=3e-16, max_nfev=40000)
 
 # result.x contains the optimal parameters for the fit
 k_opt, Y_opt = result.x[:2]
