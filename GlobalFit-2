@@ -1,0 +1,86 @@
+import numpy as np
+import openpyxl as openpyxl
+import pandas as pd
+from scipy.optimize import curve_fit, least_squares
+from scipy.integrate import quad
+from scipy.special import erf
+import matplotlib.pyplot as plt
+from scipy.integrate import odeint
+
+# Read the excel file
+df = pd.read_excel(r'C:\Users\chaiyon0\OneDrive\DATA\PythonFit\ExcitonDiffusionFit\Timetrace_SubPc-2.xlsx', sheet_name='Sheet1')
+# Select the required columns and rename them
+df = df.iloc[:, :5]  # Select the first 5 columns
+t = df.iloc[0:, 0]  # Time column
+A1 = df.iloc[0:, 1]  # A1 column
+A2 = df.iloc[0:, 2]  # A2 column
+A3 = df.iloc[0:, 3]  # A3 column
+A4 = df.iloc[0:, 4]  # A4 column
+
+# Convert DataFrame to numpy arrays
+Time_values = t.values.flatten()
+A1_data = A1.values.flatten()
+A2_data = A2.values.flatten()
+A3_data = A3.values.flatten()
+A4_data = A4.values.flatten()
+
+# Prepare the data
+X_data = (Time_values, Time_values, Time_values, Time_values)
+X_data_1D = np.concatenate(X_data)
+Y_data = (A1_data, A2_data, A3_data, A4_data)
+Y_data_1D = np.concatenate(Y_data)
+
+# Print input
+#print (f"X_data={X_data_1D}, Y_data={Y_data_1D}")
+
+# Define the differential equation for N(t) when exciton annihilation is time-dependent
+def rate_eq(n_t, t, k, Y0):
+ return -k * n_t - ((Y0/2) * n_t ** 2 / np.sqrt(t))
+
+# Solve the differential equation
+def N_t(t, N0, k, Y):
+ return odeint (rate_eq, N0, t, args=(k, Y))
+
+
+
+# Define the residuals function
+def residuals(params, X_data, y_data):
+ k, Y = params[:2]
+ N0 = params[2:]
+ residuals = np.zeros(y_data.shape[0])
+ for i in range (4):
+  start = i * Time_values.shape[0]
+  end = start + Time_values.shape[0]
+  residuals[start:end] = y_data[start:end] - N_t (Time_values, N0[i], k, Y,)
+
+ return residuals
+
+# Initial guess for the parameters k, Y, N0
+initial_guess = (0.01, 0.01, 1, 1, 1, 1)
+# Define the lower and upper bounds
+lower_bounds = (0, 0, 0, 0, 0, 0)
+upper_bounds = (1, 1, 10, 10, 10, 10)
+
+# Perform the least-squares minimization
+result = least_squares(residuals, initial_guess, args=(X_data_1D, Y_data_1D), bounds=(lower_bounds, upper_bounds),xtol=3e-16, ftol=3e-16, max_nfev=40000)
+
+# result.x contains the optimal parameters for the fit
+k_opt, Y_opt = result.x[:2]
+N0_opt = result.x[2:]
+print("Optimal parameters are k={}, Y={}, N0={}".format(k_opt, Y_opt, N0_opt))
+
+# Plot the data and the fit
+plt.figure()
+plt.scatter(Time_values, A1_data, label='A1 data')
+plt.scatter(Time_values, A2_data, label='A2 data')
+plt.scatter(Time_values, A3_data, label='A3 data')
+plt.scatter(Time_values, A4_data, label='A4 data')
+plt.plot(Time_values, N_t(Time_values, N0_opt[0], k_opt, Y_opt), label='Fit A1')
+plt.plot(Time_values, N_t(Time_values, N0_opt[1], k_opt, Y_opt), label='Fit A2')
+plt.plot(Time_values, N_t(Time_values, N0_opt[2], k_opt, Y_opt), label='Fit A3')
+plt.plot(Time_values, N_t(Time_values, N0_opt[3], k_opt, Y_opt), label='Fit A4')
+plt.xscale('log')  # Set x-axis to logarithmic scale
+plt.xlabel('Time / ps')
+plt.ylabel('OD / a.u.')
+plt.legend()
+plt.show()
